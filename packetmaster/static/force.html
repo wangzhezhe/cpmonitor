@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>kforce</title>
+	<script src="js/esl.js"></script>
+</head>
+<body>
+<div id = "demo1" style="height:800px;border:1px solid #ccc;padding:1px;" ></div>
+<script type="text/javascript" src="http://keleyi.com/keleyi/pmedia/jquery/jquery-1.10.2.min.js"></script>
+<script type="text/javascript">
+   var newnodes=new Array();
+   var newlinks=new Array();
+   var  option = {
+    title : {
+        text: 'app topology',
+        subtext: 'data from elasticsearch',
+        x:'right',
+        y:'bottom'
+    },
+    tooltip : {
+        trigger: 'item',
+        formatter: '{a} : {b}'
+    },
+    legend: {
+        x: 'left',
+        selected:{'type1':true,'type2':true},
+        data:['type1','type2']
+    },
+    isShowScrollBar:false,
+    series: [
+        {
+            type:'kforce',
+            categories : [
+                {
+                    name: 'nodea',
+                    itemStyle: {
+                        normal: {
+                            color : '#ff7f50'
+                        }
+                    }
+                },
+                {
+                    name: 'nodeb',
+                    itemStyle: {
+                        normal: {
+                            color : '#ff7f50'
+                        }
+                    }
+                },
+                {
+                    name:'nodec',
+                    itemStyle: {
+                        normal: {
+                            color : '#87cdfa'
+                        }
+                    }
+                }
+            ],
+            itemStyle: {
+                normal: {
+                    label: {
+                        show: true,
+                        textStyle: {
+                            color: '#000000'
+                        }
+                    },
+                    nodeStyle : {
+                        brushType : 'both',
+                        strokeColor : 'rgba(255,215,0,0.4)',
+                        lineWidth : 2
+                    }
+                },emphasis:{
+                    linkStyle : { strokeColor : '#5182AB'}
+                }
+            },
+            minRadius : 15,
+            maxRadius : 25,
+            density : 0.8,
+            attractiveness: 0.8,
+            nodes:[
+                {category:0, name: '乔布斯', value : 10, shapeType:'rectangle',onclick:function(params){
+                     alert(params.target.style.text);
+                     params.target.style.text = "雷布斯";
+                },
+                  itemStyle:{
+                    normal:{
+                        width:100,
+                        height:80
+                    }
+                }},
+                {category:1, name: '丽萨-乔布斯',value : 2,shapeType:'ellipse',
+                itemStyle:{
+                    normal:{
+                        a:40,
+                        b:20
+                    }
+                }},
+                {category:1, name: '保罗-乔布斯',value : 3},
+                {category:1, name: '克拉拉-乔布斯',value : 3},
+                {category:1, name: '劳伦-鲍威尔',value : 7},
+                {category:2, name: '史蒂夫-沃兹尼艾克',value : 5},
+                {category:2, name: '奥巴马',value : 8,shapeType:'rectangle'},
+                {category:2, name: '比尔-盖茨',value : 9},
+                {category:2, name: '乔纳森-艾夫',value : 4},
+                {category:2, name: '蒂姆-库克',value : 4},
+                {category:2, name: '龙-韦恩',value : 1},
+            ],
+            links : [
+                {source : 1, target : 0, weight : 1,
+                onclick:function(params){
+                     alert(params.target.style.text);
+                },
+                itemStyle:{
+                    normal:{
+                        lineWidth:10,
+                        text:'丽萨-乔布斯',
+                        textColor:'#030303',
+                        textFont:'bold 15px verdana',
+                        textPosition:'inside'
+                    }
+                }},
+                {source : 2, target : 0, weight : 2},
+                {source : 3, target : 0, weight : 1},
+                {source : 4, target : 0, weight : 2},
+                {source : 5, target : 0, weight : 3},
+                {source : 6, target : 0, weight : 6},
+                {source : 7, target : 0, weight : 6},
+                {source : 8, target : 0, weight : 1},
+                {source : 9, target : 0, weight : 1},
+                {source : 10, target : 0, weight : 1}
+                
+            ]
+        }
+    ]
+};
+
+
+$(function(){
+ console.log("page load")
+});
+
+function contains(endpoint,newnodes){
+	for (var i=0;i<newnodes.length;i++){
+		    if (newnodes[i].name==endpoint){
+				    return i
+				}
+		}
+	    return -1
+	}
+	
+	
+function refresh(index,endpoint,myChart){
+	//http://localhost:8080/assapp/10.10.103.131:41699
+	 var req="http://"+"localhost:8080/assapp/"+endpoint
+	 //alert("click")
+	 console.log(req)
+	 $.get(req,function(data){
+	       console.log(data)
+		   len=newnodes.length
+		   var j=len
+		   console.log("the lengh of newnodes:" , j)
+	       datalen=data.length
+		   
+	for (i=0;i<datalen;i++){
+		 if (data[i].Iflisten==true) {
+			 var namestr=data[i].Ip+":"+data[i].Port
+			 var pinfo=data[i].Processsummary
+			 exist=contains(namestr,newnodes)
+			 console.log("return index:" , exist,"local endpoint",namestr);
+			if (exist!=-1){
+				console.log("enter the function")
+				var templink={source : exist, target :index, weight : 2}
+				newlinks.push(templink);
+			}
+			else
+			{
+				console.log("into else j :" , j,"index:",index);
+				console.log(pinfo)
+		        var tempnode={category:2, name: namestr ,value : 3, onclick:function(params){alert(pinfo),refresh(j,namestr,myChart)}}
+		        var templink={source : j, target :index, weight : 2}
+				newnodes.push(tempnode);
+				newlinks.push(templink);
+			}
+		     	j++;	
+		    }
+	    }
+			option.series[0].nodes=newnodes;
+			option.series[0].links=newlinks;
+	        myChart.setOption(option);
+		
+       });
+}
+
+function dataprocess(data,myChart){
+	//console.log(data)
+	//console.log(option)
+	var i;
+	newnodes[0]={category:1, name: "10.10.103.131:8080",value : 3,onclick:function(params){alert(params.target.shape)}}
+	var j=1;
+	for (i=1;i<data.length;i++){
+         
+		 if (data[i].Iflisten==true) {
+	     var namestr=data[i].Ip+":"+data[i].Port
+		var pinfo=data[i].Processsummary
+		console.log(pinfo)
+		var tempnode={category:2, name: namestr ,value : 3, onclick:function(params){alert(pinfo),refresh(j,namestr,myChart)}}
+		var templink={source : j, target : 0, weight : 2}
+		 newnodes.push(tempnode);
+		 newlinks.push(templink);
+		 j++;	
+		}
+ 
+	}
+			console.log(newnodes);
+			console.log(newlinks);
+			option.series[0].nodes=newnodes;
+			option.series[0].links=newlinks;
+	       myChart.setOption(option);
+}
+
+	require.config({
+        packages:[{
+            name:'echarts',
+            location:'./echarts/src',
+            main:'echarts'
+        },{
+            name:'zrender',
+            location:'./zrender/src',
+            main:'zrender'
+        }]
+    });
+	
+
+require(
+    [
+        'echarts',
+        'echarts/chart/kforce',
+    ],
+	
+    function(ec) {
+         var myChart = ec.init(document.getElementById('demo1'));
+         console.log("发送请求");
+		 console.log(option)
+	     $.get("http://localhost:8080/assapp/10.10.103.131:8080",function(data){dataprocess(data,myChart)}); 
+	     //console.log(option)
+	    
+    }
+)
+
+</script>
+</body>
+</html>

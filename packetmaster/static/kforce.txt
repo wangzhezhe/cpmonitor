@@ -1,0 +1,50 @@
+KForce.js 
+
+基于echarts 力矩图进行的扩展
+
+在原来的基础上增加了 
+1. 节点的点击事件
+	
+	{category:0, name: '乔布斯', value : 10,shapeType:'rectangle',
+		onclick:function(params){ alert(params.target.shape);}
+	}
+2. 节点的图形样式 ： 增加椭圆节点和矩形节点
+	
+	椭圆
+	{category:1, name: '丽萨-乔布斯',value : 2,shapeType:'ellipse',
+    	itemStyle:{ normal:{a:40,b:20}
+    }}
+    a 为椭圆长半轴 b 为短半轴 
+    矩形
+    {category:0, name: '乔布斯', value : 10,shapeType:'rectangle',
+      itemStyle:{ normal:{ width:100, height:80 }
+    }}
+3. 连接线的文字标注
+	{source : 1, target : 0, weight : 1,        
+    	itemStyle:
+    	{
+        	normal:
+        	{
+	            lineWidth:10,
+	            text:'丽萨-乔布斯',
+	            textColor:'#030303',
+	            textFont:'bold 15px verdana',
+	            textPosition:'inside'
+    		}
+        }
+    }
+    textPosition 采用的zrender中的文字位置。
+4. 连接线的点击事件
+	{ source : 1, target : 0, weight : 1,        
+    	onclick:function(params){alert(params.target.shape);}
+    }
+5. 增加了滚动条 
+	增加 isShowScrollBar option  控制滚动条是否显示 
+5. 点击参数params 获取节点数据
+	var d = params.target.style.text
+
+	
+
+
+
+
