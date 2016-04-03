@@ -1,10 +1,10 @@
 package app
 
 import (
-	"cpmonitor/packetagent/lib"
-	"cpmonitor/packetagent/model"
 	"encoding/json"
 	"errors"
+	"github.com/cpmonitor/packetagent/lib"
+	"github.com/cpmonitor/packetagent/model"
 	"github.com/emicklei/go-restful"
 	"github.com/golang/glog"
 	"github.com/shirou/gopsutil/process"
@@ -13,12 +13,12 @@ import (
 )
 
 // This example shows the minimal code needed to get a restful.WebService working.
-//
 // GET http://localhost:8080/hello
 
 var (
-	device      string        = "eth0"
-	Defaulttime time.Duration = 30
+	Device       string        = "eth0"
+	Defaulttime  time.Duration = 30
+	Influxserver string
 )
 
 func Register(container *restful.Container) {
@@ -77,6 +77,7 @@ func Checkserver(request *restful.Request, response *restful.Response) {
 
 //when get the pid of that port
 //start collecting the packet for 60s
+//the topology only need to be check temporaray
 func StartListen(request *restful.Request, response *restful.Response) {
 	portstring := request.PathParameter("port-id")
 	glog.Info("get the port number", portstring)
@@ -99,7 +100,7 @@ func StartListen(request *restful.Request, response *restful.Response) {
 	timesignal := time.After(time.Second * Defaulttime)
 	//start collect and check the timesignal every one minutes
 	if !lib.Activeflag {
-		go lib.Startcollect(portint, device, timesignal)
+		go lib.Startcollect(portint, Device, timesignal)
 		lib.Flagmutex.Lock()
 		lib.Activeflag = true
 		response.Write([]byte("activated"))
