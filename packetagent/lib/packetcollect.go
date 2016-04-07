@@ -1,7 +1,7 @@
 package lib
 
 import (
-	"encoding/json"
+	//"encoding/json"
 	"github.com/golang/glog"
 
 	"net"
@@ -9,7 +9,9 @@ import (
 	"strings"
 
 	"container/list"
+	"github.com/cpmonitor/packetagent/metrics"
 	"github.com/cpmonitor/packetagent/model"
+	"github.com/cpmonitor/packetagent/model/influxdbbackend"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
@@ -29,34 +31,18 @@ var (
 	ESClient         *model.ESClient
 	Activeflag       bool = false //if flag is true , the agent is collecting the data
 	Flagmutex             = &sync.Mutex{}
+
+	influxserver = "http://10.10.105.33:8086"
+	username     = "wangzhe"
+	password     = "123456"
+	dbname       = "test"
+	Influxclient *influxdbbackend.InfluxdbStorage
 )
-
-type Packetdetail struct {
-	Requestdetail string
-	Responddetail string
-}
-type HttpTransaction struct {
-	//insert struct
-	Packetdetail
-	Srcip       string
-	Srcport     string
-	Destip      string
-	Destport    string
-	Timesend    time.Time
-	Timereceive time.Time
-	Respondtime float64
-	//only application layer info
-
-}
-
-type Address struct {
-	IP   string
-	PORT string
-}
 
 func init() {
 	glog.Info("init  the ESClient")
-	ESClient, err = model.Getclient(ESSERVER)
+	//ESClient, err = model.Getclient(ESSERVER)
+	Influxclient, err = influxdbbackend.Getinfluxclient(influxserver, username, password, dbname)
 	if err != nil {
 		glog.Info("fail to create the client !!!:", err)
 		return
@@ -104,7 +90,7 @@ func detectHttp(packet gopacket.Packet) (bool, []byte) {
 }
 
 //if it is the output stream from local machine
-func outputStream(packet gopacket.Packet, Srcaddr *Address, Destaddr *Address) {
+func outputStream(packet gopacket.Packet, Srcaddr *metrics.Address, Destaddr *metrics.Address) {
 	ishttp, httpcontent := detectHttp(packet)
 	if httpcontent != nil {
 		if glog.V(1) {
@@ -116,13 +102,13 @@ func outputStream(packet gopacket.Packet, Srcaddr *Address, Destaddr *Address) {
 		sendtime := time.Now()
 		//iphandler := packet.Layer(layers.LayerTypeIPv4)
 		reqdetail := string(packet.ApplicationLayer().LayerContents())
-		httpinstance := &HttpTransaction{
+		httpinstance := &metrics.HttpTransaction{
 			Srcip:        Srcaddr.IP,
 			Srcport:      Srcaddr.PORT,
 			Destip:       Destaddr.IP,
 			Destport:     Destaddr.PORT,
 			Timesend:     sendtime,
-			Packetdetail: Packetdetail{Requestdetail: reqdetail, Responddetail: ""},
+			Packetdetail: metrics.Packetdetail{Requestdetail: reqdetail, Responddetail: ""},
 		}
 		//put the httpinstance into a list
 		if glog.V(1) {
@@ -137,7 +123,7 @@ func outputStream(packet gopacket.Packet, Srcaddr *Address, Destaddr *Address) {
 }
 
 //adjust if this is the response of the packet
-func ifreverse(httpinstance *HttpTransaction, Srcaddr *Address, Destaddr *Address) bool {
+func ifreverse(httpinstance *metrics.HttpTransaction, Srcaddr *metrics.Address, Destaddr *metrics.Address) bool {
 	if httpinstance.Srcip == Destaddr.IP && httpinstance.Destip == Srcaddr.IP {
 		if httpinstance.Srcport == Destaddr.PORT && httpinstance.Destport == Srcaddr.PORT {
 			return true
@@ -150,7 +136,7 @@ func ifreverse(httpinstance *HttpTransaction, Srcaddr *Address, Destaddr *Addres
 }
 
 //if it is the input stream to local machine
-func inputStream(packet gopacket.Packet, Srcaddr *Address, Destaddr *Address) {
+func inputStream(packet gopacket.Packet, Srcaddr *metrics.Address, Destaddr *metrics.Address) {
 	//get the instance from the list which has the reverse srcaddr and the destaddr
 	respdetail := string(packet.Data())
 	if glog.V(1) {
@@ -158,7 +144,7 @@ func inputStream(packet gopacket.Packet, Srcaddr *Address, Destaddr *Address) {
 	}
 
 	for element := httpinstancelist.Front(); element != nil; element = element.Next() {
-		httpinstance := element.Value.(*HttpTransaction)
+		httpinstance := element.Value.(*metrics.HttpTransaction)
 		isreverse := ifreverse(httpinstance, Srcaddr, Destaddr)
 		if isreverse {
 			httpinstance.Timereceive = time.Now()
@@ -176,11 +162,12 @@ func inputStream(packet gopacket.Packet, Srcaddr *Address, Destaddr *Address) {
 			}
 			httpinstancelist.Remove(element)
 			//??how to use generic to realize the push function of different type
-			jsoninfo, _ := json.Marshal(httpinstance)
+			//jsoninfo, _ := json.Marshal(httpinstance)
 			//the type should be the ip of this machine
 			//the first parameter is index the second one is type
-			err := ESClient.Push(jsoninfo, "packetagent", localip)
-
+			//err := ESClient.Push(jsoninfo, "packetagent", localip)
+			measurement := "respondtime"
+			err := Influxclient.AddStats("type_packet", measurement, httpinstance)
 			if err != nil {
 				glog.Info("error to push")
 			}
@@ -209,8 +196,8 @@ func processPacketInfo(packet gopacket.Packet) {
 		destip := httphandler.DstIP
 		//log.Println(srcip.String())
 		//send the packet from local machine
-		Srcaddr := &Address{IP: srcip.String(), PORT: srcport.String()}
-		Destaddr := &Address{IP: destip.String(), PORT: destport.String()}
+		Srcaddr := &metrics.Address{IP: srcip.String(), PORT: srcport.String()}
+		Destaddr := &metrics.Address{IP: destip.String(), PORT: destport.String()}
 		if glog.V(2) {
 			glog.Infof("srcaddr %v destaddr %v \n", Srcaddr, Destaddr)
 		}

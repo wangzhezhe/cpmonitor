@@ -19,18 +19,19 @@ A series is a combination of a measurement (time/values) and a set of tags.
 
 */
 
-package model
+package influxdbbackend
 
 import (
 	"fmt"
-	"github.com/influxdata/influxdb/client/v2"
+	"github.com/cpmonitor/packetagent/metrics"
+	influxpackage "github.com/influxdata/influxdb/client/v2"
 	"os"
 	"sync"
 	"time"
 )
 
-type influxdbStorage struct {
-	Influxclient    client.Client
+type InfluxdbStorage struct {
+	Influxclient    influxpackage.Client
 	MachineName     string
 	Database        string
 	RetentionPolicy string
@@ -46,8 +47,8 @@ const (
 	Infotypemetric string = "type_metric"
 )
 
-func queryDB(clnt client.Client, cmd string, dbname string) (res []client.Result, err error) {
-	q := client.Query{
+func queryDB(clnt influxpackage.Client, cmd string, dbname string) (res []influxpackage.Result, err error) {
+	q := influxpackage.Query{
 		Command:  cmd,
 		Database: dbname,
 	}
@@ -62,8 +63,16 @@ func queryDB(clnt client.Client, cmd string, dbname string) (res []client.Result
 	return res, nil
 }
 
-func Newinfluxclient(influxserver string, username string, password string, dbname string) (*influxdbStorage, error) {
-	c, err := client.NewHTTPClient(client.HTTPConfig{
+func Getinfluxclient(influxserver string, username string, password string, dbname string) (*InfluxdbStorage, error) {
+	client, err := Newinfluxclient(influxserver, username, password, dbname)
+	if err != nil {
+		return client, err
+	}
+	return nil, err
+}
+
+func Newinfluxclient(influxserver string, username string, password string, dbname string) (*InfluxdbStorage, error) {
+	c, err := influxpackage.NewHTTPClient(influxpackage.HTTPConfig{
 		Addr:     influxserver,
 		Username: username,
 		Password: password,
@@ -83,7 +92,7 @@ func Newinfluxclient(influxserver string, username string, password string, dbna
 		return nil, err
 	}
 
-	influxc := &influxdbStorage{
+	influxc := &InfluxdbStorage{
 		Influxclient: c,
 		MachineName:  hostname,
 		Database:     dbname,
@@ -93,9 +102,35 @@ func Newinfluxclient(influxserver string, username string, password string, dbna
 	return influxc, nil
 }
 
-func (self *influxdbStorage) AddStats(infotype string) error {
+func (self *InfluxdbStorage) AddStats(infotype string, measurement string, content interface{}) error {
 	if infotype == Infotypepacket {
+		//transfer interface into HttpTransaction
+		httpinstance := content.(*metrics.HttpTransaction)
+		influxclient := self.Influxclient
+		//create bp point write bp point
 
+		bp, _ := influxpackage.NewBatchPoints(influxpackage.BatchPointsConfig{
+			Database:  self.Database,
+			Precision: "us",
+		})
+		fields := map[string]interface{}{
+			"respondtime": httpinstance.Respondtime,
+		}
+		tags := map[string]string{
+			"Srcip":         httpinstance.Srcip,
+			"Srcport":       httpinstance.Srcport,
+			"Destip":        httpinstance.Destip,
+			"Destport":      httpinstance.Destport,
+			"Requestdetail": httpinstance.Packetdetail.Requestdetail,
+			"Responddetail": httpinstance.Packetdetail.Responddetail,
+		}
+		point, err := influxpackage.NewPoint(measurement, tags, fields, time.Now())
+		if err != nil {
+			return err
+		}
+
+		bp.AddPoint(point)
+		influxclient.Write(bp)
 	}
 
 	if infotype == Infotypemetric {
@@ -105,7 +140,7 @@ func (self *influxdbStorage) AddStats(infotype string) error {
 	return nil
 }
 
-func (self *influxdbStorage) Close() error {
+func (self *InfluxdbStorage) Close() error {
 	err := self.Influxclient.Close()
 	if err != nil {
 		return err
