@@ -22,6 +22,7 @@ A series is a combination of a measurement (time/values) and a set of tags.
 package influxdbbackend
 
 import (
+	"errors"
 	"fmt"
 	"github.com/cpmonitor/packetagent/metrics"
 	influxpackage "github.com/influxdata/influxdb/client/v2"
@@ -66,9 +67,9 @@ func queryDB(clnt influxpackage.Client, cmd string, dbname string) (res []influx
 func Getinfluxclient(influxserver string, username string, password string, dbname string) (*InfluxdbStorage, error) {
 	client, err := Newinfluxclient(influxserver, username, password, dbname)
 	if err != nil {
-		return client, err
+		return nil, err
 	}
-	return nil, err
+	return client, nil
 }
 
 func Newinfluxclient(influxserver string, username string, password string, dbname string) (*InfluxdbStorage, error) {
@@ -105,7 +106,10 @@ func Newinfluxclient(influxserver string, username string, password string, dbna
 func (self *InfluxdbStorage) AddStats(infotype string, measurement string, content interface{}) error {
 	if infotype == Infotypepacket {
 		//transfer interface into HttpTransaction
-		httpinstance := content.(*metrics.HttpTransaction)
+		httpinstance, ok := content.(*metrics.HttpTransaction)
+		if !ok {
+			return errors.New("fail in transformation")
+		}
 		influxclient := self.Influxclient
 		//create bp point write bp point
 
@@ -117,22 +121,24 @@ func (self *InfluxdbStorage) AddStats(infotype string, measurement string, conte
 			"respondtime": httpinstance.Respondtime,
 		}
 		tags := map[string]string{
-			"Srcip":         httpinstance.Srcip,
-			"Srcport":       httpinstance.Srcport,
-			"Destip":        httpinstance.Destip,
-			"Destport":      httpinstance.Destport,
-			"Requestdetail": httpinstance.Packetdetail.Requestdetail,
-			"Responddetail": httpinstance.Packetdetail.Responddetail,
+			"Srcip":    httpinstance.Srcip,
+			"Srcport":  httpinstance.Srcport,
+			"Destip":   httpinstance.Destip,
+			"Destport": httpinstance.Destport,
+			// problems in processing nesting problem
+			// "Requestdetail": httpinstance.Packetdetail.Requestdetail,
+			// "Responddetail": httpinstance.Packetdetail.Responddetail,
 		}
+		fmt.Println("**the measurement**", measurement)
 		point, err := influxpackage.NewPoint(measurement, tags, fields, time.Now())
 		if err != nil {
 			return err
 		}
-
+		fmt.Println("the point name:", point.Name())
 		bp.AddPoint(point)
 		influxclient.Write(bp)
 	}
-
+	//common metric info
 	if infotype == Infotypemetric {
 
 	}

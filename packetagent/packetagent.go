@@ -20,7 +20,7 @@ var (
 func main() {
 	flag.Parse()
 
-	flag.StringVar(&Backend, "influx", "http://localhost:8086", "server of the influxdb")
+	flag.StringVar(&Backend, "influx", "http://127.0.0.1:8086", "server of the influxdb")
 	app.Influxserver = Backend
 	wsContainer := restful.NewContainer()
 	if glog.V(1) {

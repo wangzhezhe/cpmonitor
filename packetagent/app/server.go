@@ -14,9 +14,8 @@ import (
 
 // This example shows the minimal code needed to get a restful.WebService working.
 // GET http://localhost:8080/hello
-
 var (
-	Device       string        = "eth0"
+	Device       string        = "eth6"
 	Defaulttime  time.Duration = 30
 	Influxserver string
 )
@@ -26,6 +25,7 @@ func Register(container *restful.Container) {
 		glog.Info("start regist")
 	}
 	ws := new(restful.WebService)
+
 	ws.Path("/packet").
 		Doc("control packet listening").
 		Consumes(restful.MIME_XML, restful.MIME_JSON).
@@ -44,6 +44,10 @@ func Register(container *restful.Container) {
 		Param(ws.PathParameter("port-id", "identifier of the listening port").DataType("string")))
 
 	container.Add(ws)
+}
+
+func Testapi() {
+	glog.Info("test api connection")
 }
 
 //Check if the port is listening on this machine

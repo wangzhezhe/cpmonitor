@@ -22,7 +22,7 @@ func Newcpmanager() (CPManager, error) {
 		Hostmetricmanager:      hostmetricmanager,
 		Containermetricmanager: containermanamge,
 		//the frequency of collection  default 1s
-		Interval:          time.Duration(time.Second),
+		Interval:          time.Duration(time.Second * 5),
 		Quitglobalchannel: make(chan error),
 	}
 	return cpmanager, nil
@@ -36,6 +36,7 @@ func (self *CPManager) Start() {
 	//start other components
 	//quitGlobalHousekeeping := make(chan error)
 	self.Packetmanager.Start()
+	self.Hostmetricmanager.Start()
 	go self.globalhousekeeping(self.Quitglobalchannel)
 }
 
@@ -47,6 +48,7 @@ func (self *CPManager) globalhousekeeping(quit chan error) {
 			start := time.Now()
 			glog.Info("the time", start)
 			glog.Info("unix time", t.Unix())
+			//glog.Info("testing the housekeeping")
 			//start collecting the data
 			//send the heartbeat to the service
 		case <-quit:

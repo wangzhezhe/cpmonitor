@@ -4,8 +4,8 @@ import (
 	//"encoding/json"
 	"github.com/golang/glog"
 
+	"fmt"
 	"net"
-
 	"strings"
 
 	"container/list"
@@ -32,17 +32,23 @@ var (
 	Activeflag       bool = false //if flag is true , the agent is collecting the data
 	Flagmutex             = &sync.Mutex{}
 
-	influxserver = "http://10.10.105.33:8086"
-	username     = "wangzhe"
-	password     = "123456"
-	dbname       = "test"
-	Influxclient *influxdbbackend.InfluxdbStorage
+	influxserver  = "http://127.0.0.1:8086"
+	username      = "wangzhe"
+	password      = "123456"
+	dbname        = "testbcde"
+	Influxstorage *influxdbbackend.InfluxdbStorage
 )
 
 func init() {
-	glog.Info("init  the ESClient")
+	glog.Info("init the influxclient")
 	//ESClient, err = model.Getclient(ESSERVER)
-	Influxclient, err = influxdbbackend.Getinfluxclient(influxserver, username, password, dbname)
+	//get the influxclient at the init function
+	Influxstorage, err = influxdbbackend.Getinfluxclient(influxserver, username, password, dbname)
+	if err != nil {
+		fmt.Print(err)
+		return
+	}
+	fmt.Println("storage struct:", Influxstorage)
 	if err != nil {
 		glog.Info("fail to create the client !!!:", err)
 		return
@@ -166,8 +172,9 @@ func inputStream(packet gopacket.Packet, Srcaddr *metrics.Address, Destaddr *met
 			//the type should be the ip of this machine
 			//the first parameter is index the second one is type
 			//err := ESClient.Push(jsoninfo, "packetagent", localip)
-			measurement := "respondtime"
-			err := Influxclient.AddStats("type_packet", measurement, httpinstance)
+			//measurement := "respondtime"
+			glog.Info("send the respondtime measurement")
+			err := Influxstorage.AddStats("type_packet", "abcde", httpinstance)
 			if err != nil {
 				glog.Info("error to push")
 			}
@@ -177,7 +184,7 @@ func inputStream(packet gopacket.Packet, Srcaddr *metrics.Address, Destaddr *met
 
 }
 
-//every time get a new packet
+// get a new packet every time
 func processPacketInfo(packet gopacket.Packet) {
 	//get the specified layer
 	tcpLayer := packet.Layer(layers.LayerTypeTCP)

@@ -1,5 +1,12 @@
-add the packageagent and send the packet info into influxdbagent the measurement is the response time(do not finished yet)
+add the packageagent and send the packet info into influxdbagent the measurement is the response time (httpresponse ok)
+
+start listening the specific port:
+
+curl http://127.0.0.1:9990/packet/startlisten/<port id>
+
+attention the content length of tag
 
 metrics in machine level container level and common info
 
 star the main logic of the manager
+
