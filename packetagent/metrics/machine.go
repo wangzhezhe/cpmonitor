@@ -7,7 +7,10 @@ type Machineinfo struct {
 	Osversion string
 
 	// Docker version.
-	DockerVersion string `json:"docker_version"`
+	Dockerinfo []string `json:"docker_version"`
+
+	// Numbers of the container
+	Containernum int
 
 	// The number of cores in this machine.
 	NumCores int `json:"num_cores"`
